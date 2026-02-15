@@ -1,27 +1,9 @@
 --[[
     ╔═══════════════════════════════════════════════════════════════╗
-    ║                                                               ║
-    ║           ★ The StarEzic Hub ★                                ║
+    ║           ★ The StarEzic Hub ★ - Parte 1                      ║
     ║           Flee The Facility - Ultimate Script                 ║
-    ║                                                               ║
-    ║           Developer: LariizzyEzc                              ║
-    ║           Version: 1.0.0                                      ║
-    ║                                                               ║
+    ║           Sistema de GUI e Key                                ║
     ╚═══════════════════════════════════════════════════════════════╝
-    
-    Sistema de Acesso:
-    - Developer: LariizzyEzc (Acesso Total + Comandos Admin)
-    - Premium: Requer Key (Features Avançadas)
-    - Basic: Requer Key (Features Básicas)
-    
-    Comandos Developer (Chat):
-    !genkey [tipo] [dias] - Gerar key (premium/basic/lifetime)
-    !keys - Ver todas as keys ativas
-    !revoke [key] - Cancelar uma key
-    !ban [nick] - Banir jogador do script
-    !unban [nick] - Desbanir jogador
-    !addpremium [nick] - Adicionar premium permanente
-    !removepremium [nick] - Remover premium
 ]]
 
 --// Services
@@ -31,70 +13,46 @@ local Lighting = game:GetService("Lighting")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local CoreGui = game:GetService("CoreGui")
 local TeleportService = game:GetService("TeleportService")
-local HttpService = game:GetService("HttpService")
 local UserInputService = game:GetService("UserInputService")
-local TweenService = game:GetService("TweenService")
 local LocalPlayer = Players.LocalPlayer
 local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 
---// CONFIGURAÇÕES PRINCIPAIS
+--// CONFIGURAÇÕES
 local CONFIG = {
     Developer = "LariizzyEzc",
     ScriptName = "The StarEzic Hub",
     Version = "1.0.0",
-    
-    -- Cores Aurora Boreal
     Colors = {
-        Primary = Color3.fromRGB(0, 255, 136),      -- Verde Aurora
-        Secondary = Color3.fromRGB(0, 170, 255),    -- Azul Aurora
-        Premium = Color3.fromRGB(255, 0, 255),      -- Roxo Premium
-        Dev = Color3.fromRGB(255, 215, 0),          -- Dourado Dev
-        Background = Color3.fromRGB(15, 15, 26),    -- Fundo escuro
-        Glass = Color3.fromRGB(20, 20, 35)          -- Vidro
+        Primary = Color3.fromRGB(0, 255, 136),
+        Secondary = Color3.fromRGB(0, 170, 255),
+        Premium = Color3.fromRGB(255, 0, 255),
+        Dev = Color3.fromRGB(255, 215, 0),
+        Background = Color3.fromRGB(15, 15, 26),
+        Glass = Color3.fromRGB(20, 20, 35)
     }
 }
 
---// SISTEMA DE KEY E WHITELIST
-local KeySystem = {
-    ActiveKeys = {},        -- Keys geradas e válidas
-    UsedKeys = {},          -- Keys já usadas
-    PremiumUsers = {},      -- Usuários premium (sem key)
-    BannedUsers = {},       -- Usuários banidos do script
-    UserAccess = {}         -- Acesso atual de cada usuário
+--// SISTEMA DE KEY
+_G.KeySystem = {
+    ActiveKeys = {},
+    PremiumUsers = {},
+    BannedUsers = {},
+    UserAccess = {}
 }
 
---// VERIFICAR TIPO DE USUÁRIO
-local function GetUserRank()
+--// FUNÇÕES UTILITÁRIAS
+function GetUserRank()
     local nick = LocalPlayer.Name
-    
-    -- Developer (acesso total)
-    if nick == CONFIG.Developer then
-        return "DEVELOPER"
-    end
-    
-    -- Verificar se está banido
-    if table.find(KeySystem.BannedUsers, nick) then
-        return "BANNED"
-    end
-    
-    -- Verificar se é premium permanente
-    if table.find(KeySystem.PremiumUsers, nick) then
-        return "PREMIUM"
-    end
-    
-    -- Verificar key ativa
-    if KeySystem.UserAccess[nick] then
-        return KeySystem.UserAccess[nick].rank
-    end
-    
+    if nick == CONFIG.Developer then return "DEVELOPER" end
+    if table.find(_G.KeySystem.BannedUsers, nick) then return "BANNED" end
+    if table.find(_G.KeySystem.PremiumUsers, nick) then return "PREMIUM" end
+    if _G.KeySystem.UserAccess[nick] then return _G.KeySystem.UserAccess[nick].rank end
     return "NONE"
 end
 
---// GERAR KEY (Apenas Developer)
-local function GenerateKey(keyType, days)
+function GenerateKey(keyType, days)
     local chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
     local key = "STAR-"
-    
     for i = 1, 4 do
         for j = 1, 4 do
             local rand = math.random(1, #chars)
@@ -102,130 +60,14 @@ local function GenerateKey(keyType, days)
         end
         if i < 4 then key = key .. "-" end
     end
-    
     local expiration = tick() + (days * 86400)
-    
-    KeySystem.ActiveKeys[key] = {
-        type = keyType,
-        expiration = expiration,
-        used = false,
-        usedBy = nil
-    }
-    
+    _G.KeySystem.ActiveKeys[key] = {type = keyType, expiration = expiration, used = false, usedBy = nil}
     return key
 end
 
---// SISTEMA DE COMANDOS (Chat)
-local function SetupCommands()
-    LocalPlayer.Chatted:Connect(function(msg)
-        local rank = GetUserRank()
-        if rank ~= "DEVELOPER" then return end
-        
-        local args = msg:split(" ")
-        local cmd = args[1]:lower()
-        
-        -- Gerar Key: !genkey premium 7d
-        if cmd == "!genkey" then
-            local keyType = args[2] or "basic"
-            local days = tonumber(args[3]:gsub("d", "")) or 7
-            
-            if keyType == "lifetime" then
-                days = 999999
-            end
-            
-            local key = GenerateKey(keyType, days)
-            
-            -- Mostrar key no console/notify
-            print("╔════════════════════════════════════╗")
-            print("║  ★ NOVA KEY GERADA ★               ║")
-            print("║  Key: " .. key .. "           ║")
-            print("║  Tipo: " .. keyType:upper() .. "              ║")
-            print("║  Dias: " .. days .. "                    ║")
-            print("╚════════════════════════════════════╝")
-            
-            CreateNotification("Key Gerada!", "Key: " .. key .. " | Tipo: " .. keyType:upper(), 10)
-        end
-        
-        -- Ver keys ativas: !keys
-        if cmd == "!keys" then
-            print("=== KEYS ATIVAS ===")
-            for key, data in pairs(KeySystem.ActiveKeys) do
-                if not data.used then
-                    local timeLeft = math.floor((data.expiration - tick()) / 86400)
-                    print(key .. " | " .. data.type .. " | " .. timeLeft .. " dias restantes")
-                end
-            end
-        end
-        
-        -- Revogar key: !revoke KEY-XXXX-XXXX-XXXX-XXXX
-        if cmd == "!revoke" then
-            local key = args[2]
-            if KeySystem.ActiveKeys[key] then
-                KeySystem.ActiveKeys[key] = nil
-                CreateNotification("Key Revogada", key, 3)
-            end
-        end
-        
-        -- Banir jogador: !ban NomeRoblox
-        if cmd == "!ban" then
-            local target = args[2]
-            if target then
-                table.insert(KeySystem.BannedUsers, target)
-                CreateNotification("Jogador Banido", target .. " foi banido do script!", 3)
-            end
-        end
-        
-        -- Desbanir: !unban NomeRoblox
-        if cmd == "!unban" then
-            local target = args[2]
-            if target then
-                for i, name in ipairs(KeySystem.BannedUsers) do
-                    if name == target then
-                        table.remove(KeySystem.BannedUsers, i)
-                        CreateNotification("Jogador Desbanido", target, 3)
-                        break
-                    end
-                end
-            end
-        end
-        
-        -- Add premium permanente: !addpremium NomeRoblox
-        if cmd == "!addpremium" then
-            local target = args[2]
-            if target then
-                table.insert(KeySystem.PremiumUsers, target)
-                CreateNotification("Premium Adicionado", target .. " agora é Premium!", 3)
-            end
-        end
-        
-        -- Remove premium: !removepremium NomeRoblox
-        if cmd == "!removepremium" then
-            local target = args[2]
-            if target then
-                for i, name in ipairs(KeySystem.PremiumUsers) do
-                    if name == target then
-                        table.remove(KeySystem.PremiumUsers, i)
-                        CreateNotification("Premium Removido", target, 3)
-                        break
-                    end
-                end
-            end
-        end
-    end)
-end
-
---// CRIAR GUI
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "StarEzicHub"
-ScreenGui.Parent = CoreGui
-ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-ScreenGui.ResetOnSpawn = false
-
---// FUNÇÃO NOTIFICAÇÃO
 function CreateNotification(title, text, duration)
     local Notif = Instance.new("Frame")
-    Notif.Name = "Notification"
-    Notif.Parent = ScreenGui
+    Notif.Parent = game.CoreGui:FindFirstChild("StarEzicHub") or Instance.new("ScreenGui", game.CoreGui)
     Notif.BackgroundColor3 = CONFIG.Colors.Background
     Notif.BackgroundTransparency = 0.1
     Notif.BorderSizePixel = 0
@@ -264,7 +106,6 @@ function CreateNotification(title, text, duration)
     Message.TextWrapped = true
     Message.TextXAlignment = Enum.TextXAlignment.Left
     
-    -- Animação entrada
     Notif:TweenPosition(UDim2.new(1, -340, 0.8, 0), Enum.EasingDirection.Out, Enum.EasingStyle.Quart, 0.5, true)
     
     delay(duration, function()
@@ -274,198 +115,14 @@ function CreateNotification(title, text, duration)
     end)
 end
 
---// TELA DE LOGIN (KEY SYSTEM)
-local LoginFrame = Instance.new("Frame")
-LoginFrame.Name = "LoginFrame"
-LoginFrame.Parent = ScreenGui
-LoginFrame.BackgroundColor3 = CONFIG.Colors.Background
-LoginFrame.BackgroundTransparency = 0.1
-LoginFrame.BorderSizePixel = 0
-LoginFrame.Position = UDim2.new(0.5, -200, 0.5, -150)
-LoginFrame.Size = UDim2.new(0, 400, 0, 300)
-LoginFrame.Visible = true
+--// CRIAR GUI PRINCIPAL
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "StarEzicHub"
+ScreenGui.Parent = CoreGui
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+ScreenGui.ResetOnSpawn = false
 
-local LoginCorner = Instance.new("UICorner")
-LoginCorner.CornerRadius = UDim.new(0, 16)
-LoginCorner.Parent = LoginFrame
-
-local LoginStroke = Instance.new("UIStroke")
-LoginStroke.Color = CONFIG.Colors.Primary
-LoginStroke.Thickness = 3
-LoginStroke.Parent = LoginFrame
-
--- Glow effect
-for i = 1, 3 do
-    local glow = Instance.new("Frame")
-    glow.Name = "Glow" .. i
-    glow.Parent = LoginFrame
-    glow.BackgroundColor3 = CONFIG.Colors.Primary
-    glow.BackgroundTransparency = 0.9 - (i * 0.1)
-    glow.BorderSizePixel = 0
-    glow.Position = UDim2.new(0, -i*2, 0, -i*2)
-    glow.Size = UDim2.new(1, i*4, 1, i*4)
-    glow.ZIndex = -i
-    
-    local glowCorner = Instance.new("UICorner")
-    glowCorner.CornerRadius = UDim.new(0, 16 + i*2)
-    glowCorner.Parent = glow
-end
-
--- Título
-local TitleLabel = Instance.new("TextLabel")
-TitleLabel.Parent = LoginFrame
-TitleLabel.BackgroundTransparency = 1
-TitleLabel.Position = UDim2.new(0, 0, 0, 20)
-TitleLabel.Size = UDim2.new(1, 0, 0, 40)
-TitleLabel.Font = Enum.Font.GothamBold
-TitleLabel.Text = "★ The StarEzic Hub ★"
-TitleLabel.TextColor3 = CONFIG.Colors.Primary
-TitleLabel.TextSize = 28
-
-local SubTitle = Instance.new("TextLabel")
-SubTitle.Parent = LoginFrame
-SubTitle.BackgroundTransparency = 1
-SubTitle.Position = UDim2.new(0, 0, 0, 60)
-SubTitle.Size = UDim2.new(1, 0, 0, 20)
-SubTitle.Font = Enum.Font.Gotham
-SubTitle.Text = "Flee The Facility - Ultimate Script"
-SubTitle.TextColor3 = Color3.fromRGB(200, 200, 200)
-SubTitle.TextSize = 14
-
--- Campo Key
-local KeyBox = Instance.new("TextBox")
-KeyBox.Name = "KeyBox"
-KeyBox.Parent = LoginFrame
-KeyBox.BackgroundColor3 = CONFIG.Colors.Glass
-KeyBox.BorderSizePixel = 0
-KeyBox.Position = UDim2.new(0.5, -150, 0, 100)
-KeyBox.Size = UDim2.new(0, 300, 0, 45)
-KeyBox.Font = Enum.Font.Gotham
-KeyBox.PlaceholderText = "Enter Your Key Here..."
-KeyBox.Text = ""
-KeyBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-KeyBox.TextSize = 16
-KeyBox.ClearTextOnFocus = false
-
-local KeyCorner = Instance.new("UICorner")
-KeyCorner.CornerRadius = UDim.new(0, 10)
-KeyCorner.Parent = KeyBox
-
-local KeyStroke = Instance.new("UIStroke")
-KeyStroke.Color = CONFIG.Colors.Primary
-KeyStroke.Thickness = 1
-KeyStroke.Parent = KeyBox
-
--- Botão Verify
-local VerifyBtn = Instance.new("TextButton")
-VerifyBtn.Name = "VerifyBtn"
-VerifyBtn.Parent = LoginFrame
-VerifyBtn.BackgroundColor3 = CONFIG.Colors.Primary
-VerifyBtn.BorderSizePixel = 0
-VerifyBtn.Position = UDim2.new(0.5, -100, 0, 160)
-VerifyBtn.Size = UDim2.new(0, 200, 0, 45)
-VerifyBtn.Font = Enum.Font.GothamBold
-VerifyBtn.Text = "VERIFY KEY"
-VerifyBtn.TextColor3 = Color3.fromRGB(0, 0, 0)
-VerifyBtn.TextSize = 16
-
-local VerifyCorner = Instance.new("UICorner")
-VerifyCorner.CornerRadius = UDim.new(0, 10)
-VerifyCorner.Parent = VerifyBtn
-
--- Info
-local InfoLabel = Instance.new("TextLabel")
-InfoLabel.Parent = LoginFrame
-InfoLabel.BackgroundTransparency = 1
-InfoLabel.Position = UDim2.new(0, 0, 0, 220)
-InfoLabel.Size = UDim2.new(1, 0, 0, 20)
-InfoLabel.Font = Enum.Font.Gotham
-InfoLabel.Text = "Don't have a key? Contact: " .. CONFIG.Developer
-InfoLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
-InfoLabel.TextSize = 12
-
--- Trial Button
-local TrialBtn = Instance.new("TextButton")
-TrialBtn.Name = "TrialBtn"
-TrialBtn.Parent = LoginFrame
-TrialBtn.BackgroundColor3 = CONFIG.Colors.Secondary
-TrialBtn.BackgroundTransparency = 0.8
-TrialBtn.BorderSizePixel = 0
-TrialBtn.Position = UDim2.new(0.5, -75, 0, 245)
-TrialBtn.Size = UDim2.new(0, 150, 0, 35)
-TrialBtn.Font = Enum.Font.GothamBold
-TrialBtn.Text = "FREE TRIAL (1 Hour)"
-TrialBtn.TextColor3 = CONFIG.Colors.Secondary
-TrialBtn.TextSize = 12
-
-local TrialCorner = Instance.new("UICorner")
-TrialCorner.CornerRadius = UDim.new(0, 8)
-TrialCorner.Parent = TrialBtn
-
---// VERIFICAR KEY
-local function VerifyKey(key)
-    local rank = GetUserRank()
-    
-    -- Developer não precisa de key
-    if rank == "DEVELOPER" then
-        return true, "DEVELOPER"
-    end
-    
-    -- Verificar se é key válida
-    if KeySystem.ActiveKeys[key] then
-        local keyData = KeySystem.ActiveKeys[key]
-        
-        if keyData.used then
-            return false, "Key already used!"
-        end
-        
-        if tick() > keyData.expiration then
-            return false, "Key expired!"
-        end
-        
-        -- Marcar como usada
-        keyData.used = true
-        keyData.usedBy = LocalPlayer.Name
-        
-        -- Dar acesso
-        KeySystem.UserAccess[LocalPlayer.Name] = {
-            rank = keyData.type:upper(),
-            expiration = keyData.expiration
-        }
-        
-        return true, keyData.type:upper()
-    end
-    
-    return false, "Invalid key!"
-end
-
---// BOTÃO VERIFY
-VerifyBtn.MouseButton1Click:Connect(function()
-    local key = KeyBox.Text:upper()
-    local success, result = VerifyKey(key)
-    
-    if success then
-        CreateNotification("Success!", "Access granted: " .. result, 3)
-        LoginFrame.Visible = false
-        OpenMainGUI(result)
-    else
-        CreateNotification("Error!", result, 3)
-        KeyBox.Text = ""
-    end
-end)
-
---// BOTÃO TRIAL
-TrialBtn.MouseButton1Click:Connect(function()
-    KeySystem.UserAccess[LocalPlayer.Name] = {
-        rank = "BASIC",
-        expiration = tick() + 3600  -- 1 hora
-    }
-    CreateNotification("Trial Started!", "1 hour free access granted!", 3)
-    LoginFrame.Visible = false
-    OpenMainGUI("BASIC")
-end)
-
---// FRAME PRINCIPAL (Escondido inicialmente)
+--// MAIN FRAME
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
 MainFrame.Parent = ScreenGui
@@ -475,7 +132,6 @@ MainFrame.BorderSizePixel = 0
 MainFrame.Position = UDim2.new(0.5, -300, 0.5, -200)
 MainFrame.Size = UDim2.new(0, 600, 0, 400)
 MainFrame.Visible = false
-MainFrame.ClipsDescendants = true
 
 local MainCorner = Instance.new("UICorner")
 MainCorner.CornerRadius = UDim.new(0, 16)
@@ -501,7 +157,6 @@ HeaderCorner.Parent = Header
 
 -- Avatar
 local Avatar = Instance.new("ImageLabel")
-Avatar.Name = "Avatar"
 Avatar.Parent = Header
 Avatar.BackgroundColor3 = CONFIG.Colors.Glass
 Avatar.BorderSizePixel = 0
@@ -530,18 +185,17 @@ NameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 NameLabel.TextSize = 18
 NameLabel.TextXAlignment = Enum.TextXAlignment.Left
 
--- Rank Badge
-local RankLabel = Instance.new("TextLabel")
-RankLabel.Name = "RankLabel"
-RankLabel.Parent = Header
-RankLabel.BackgroundTransparency = 1
-RankLabel.Position = UDim2.new(0, 80, 0, 37)
-RankLabel.Size = UDim2.new(0, 200, 0, 20)
-RankLabel.Font = Enum.Font.GothamBold
-RankLabel.Text = "LOADING..."
-RankLabel.TextColor3 = CONFIG.Colors.Primary
-RankLabel.TextSize = 13
-RankLabel.TextXAlignment = Enum.TextXAlignment.Left
+-- Rank
+_G.RankLabel = Instance.new("TextLabel")
+_G.RankLabel.Parent = Header
+_G.RankLabel.BackgroundTransparency = 1
+_G.RankLabel.Position = UDim2.new(0, 80, 0, 37)
+_G.RankLabel.Size = UDim2.new(0, 200, 0, 20)
+_G.RankLabel.Font = Enum.Font.GothamBold
+_G.RankLabel.Text = "LOADING..."
+_G.RankLabel.TextColor3 = CONFIG.Colors.Primary
+_G.RankLabel.TextSize = 13
+_G.RankLabel.TextXAlignment = Enum.TextXAlignment.Left
 
 -- FPS
 local FPSFrame = Instance.new("Frame")
@@ -556,14 +210,14 @@ local FPSCorner = Instance.new("UICorner")
 FPSCorner.CornerRadius = UDim.new(0, 8)
 FPSCorner.Parent = FPSFrame
 
-local FPSLabel = Instance.new("TextLabel")
-FPSLabel.Parent = FPSFrame
-FPSLabel.BackgroundTransparency = 1
-FPSLabel.Size = UDim2.new(1, 0, 1, 0)
-FPSLabel.Font = Enum.Font.GothamBold
-FPSLabel.Text = "FPS: 60"
-FPSLabel.TextColor3 = CONFIG.Colors.Primary
-FPSLabel.TextSize = 13
+_G.FPSLabel = Instance.new("TextLabel")
+_G.FPSLabel.Parent = FPSFrame
+_G.FPSLabel.BackgroundTransparency = 1
+_G.FPSLabel.Size = UDim2.new(1, 0, 1, 0)
+_G.FPSLabel.Font = Enum.Font.GothamBold
+_G.FPSLabel.Text = "FPS: 60"
+_G.FPSLabel.TextColor3 = CONFIG.Colors.Primary
+_G.FPSLabel.TextSize = 13
 
 -- Ping
 local PingFrame = Instance.new("Frame")
@@ -578,14 +232,14 @@ local PingCorner = Instance.new("UICorner")
 PingCorner.CornerRadius = UDim.new(0, 8)
 PingCorner.Parent = PingFrame
 
-local PingLabel = Instance.new("TextLabel")
-PingLabel.Parent = PingFrame
-PingLabel.BackgroundTransparency = 1
-PingLabel.Size = UDim2.new(1, 0, 1, 0)
-PingLabel.Font = Enum.Font.GothamBold
-PingLabel.Text = "Ping: 60ms"
-PingLabel.TextColor3 = CONFIG.Colors.Secondary
-PingLabel.TextSize = 13
+_G.PingLabel = Instance.new("TextLabel")
+_G.PingLabel.Parent = PingFrame
+_G.PingLabel.BackgroundTransparency = 1
+_G.PingLabel.Size = UDim2.new(1, 0, 1, 0)
+_G.PingLabel.Font = Enum.Font.GothamBold
+_G.PingLabel.Text = "Ping: 60ms"
+_G.PingLabel.TextColor3 = CONFIG.Colors.Secondary
+_G.PingLabel.TextSize = 13
 
 -- Botões controle
 local CloseBtn = Instance.new("TextButton")
@@ -633,152 +287,789 @@ local SidebarCorner = Instance.new("UICorner")
 SidebarCorner.CornerRadius = UDim.new(0, 16)
 SidebarCorner.Parent = Sidebar
 
---// FUNÇÃO ABRIR GUI PRINCIPAL
-function OpenMainGUI(rank)
-    MainFrame.Visible = true
-    
-    -- Atualizar rank visual
-    local rankText = "[" .. rank .. "]"
-    local rankColor = CONFIG.Colors.Primary
-    
-    if rank == "DEVELOPER" then
-        rankText = "👑 DEVELOPER"
-        rankColor = CONFIG.Colors.Dev
-    elseif rank == "PREMIUM" then
-        rankText = "⭐ PREMIUM"
-        rankColor = CONFIG.Colors.Premium
-    elseif rank == "BASIC" then
-        rankText = "🔷 BASIC"
-        rankColor = CONFIG.Colors.Secondary
-    end
-    
-    RankLabel.Text = rankText
-    RankLabel.TextColor3 = rankColor
-    
-    -- Setup comandos se for developer
-    if rank == "DEVELOPER" then
-        SetupCommands()
-        CreateNotification("Developer Mode", "Commands enabled: !genkey, !keys, !ban", 5)
-    end
-end
+--// CONTENT AREA
+_G.ContentArea = Instance.new("Frame")
+_G.ContentArea.Parent = MainFrame
+_G.ContentArea.BackgroundColor3 = CONFIG.Colors.Background
+_G.ContentArea.BackgroundTransparency = 0.5
+_G.ContentArea.BorderSizePixel = 0
+_G.ContentArea.Position = UDim2.new(0, 145, 0, 75)
+_G.ContentArea.Size = UDim2.new(1, -150, 1, -80)
 
---// BOTÃO FLUTUANTE (Toggle)
-local ToggleBtn = Instance.new("TextButton")
-ToggleBtn.Name = "ToggleBtn"
-ToggleBtn.Parent = ScreenGui
-ToggleBtn.BackgroundColor3 = CONFIG.Colors.Background
-ToggleBtn.BorderSizePixel = 0
-ToggleBtn.Position = UDim2.new(0, 20, 0.5, -30)
-ToggleBtn.Size = UDim2.new(0, 60, 0, 60)
-ToggleBtn.Font = Enum.Font.GothamBold
-ToggleBtn.Text = "★\nSTAR\nEZIC"
-ToggleBtn.TextColor3 = CONFIG.Colors.Primary
-ToggleBtn.TextSize = 10
-ToggleBtn.Visible = false  -- Só aparece após login
+--// TOGGLE BUTTON
+_G.ToggleBtn = Instance.new("TextButton")
+_G.ToggleBtn.Name = "ToggleBtn"
+_G.ToggleBtn.Parent = ScreenGui
+_G.ToggleBtn.BackgroundColor3 = CONFIG.Colors.Background
+_G.ToggleBtn.BorderSizePixel = 0
+_G.ToggleBtn.Position = UDim2.new(0, 20, 0.5, -30)
+_G.ToggleBtn.Size = UDim2.new(0, 60, 0, 60)
+_G.ToggleBtn.Font = Enum.Font.GothamBold
+_G.ToggleBtn.Text = "★\nSTAR\nEZIC"
+_G.ToggleBtn.TextColor3 = CONFIG.Colors.Primary
+_G.ToggleBtn.TextSize = 10
+_G.ToggleBtn.Visible = false
 
 local ToggleCorner = Instance.new("UICorner")
 ToggleCorner.CornerRadius = UDim.new(1, 0)
-ToggleCorner.Parent = ToggleBtn
+ToggleCorner.Parent = _G.ToggleBtn
 
 local ToggleStroke = Instance.new("UIStroke")
 ToggleStroke.Color = CONFIG.Colors.Primary
 ToggleStroke.Thickness = 3
-ToggleStroke.Parent = ToggleBtn
-
--- Glow no botão
-for i = 1, 5 do
-    local glow = Instance.new("Frame")
-    glow.Parent = ToggleBtn
-    glow.BackgroundColor3 = CONFIG.Colors.Primary
-    glow.BackgroundTransparency = 0.8 - (i * 0.1)
-    glow.BorderSizePixel = 0
-    glow.Position = UDim2.new(0.5, -30-i*2, 0.5, -30-i*2)
-    glow.Size = UDim2.new(0, 60+i*4, 0, 60+i*4)
-    glow.ZIndex = -i
-    
-    local glowCorner = Instance.new("UICorner")
-    glowCorner.CornerRadius = UDim.new(1, 0)
-    glowCorner.Parent = glow
-end
+ToggleStroke.Parent = _G.ToggleBtn
 
 -- Eventos
 CloseBtn.MouseButton1Click:Connect(function()
     MainFrame.Visible = false
-    ToggleBtn.Visible = true
+    _G.ToggleBtn.Visible = true
 end)
 
 MinBtn.MouseButton1Click:Connect(function()
     MainFrame.Visible = false
-    ToggleBtn.Visible = true
+    _G.ToggleBtn.Visible = true
 end)
 
-ToggleBtn.MouseButton1Click:Connect(function()
+_G.ToggleBtn.MouseButton1Click:Connect(function()
     MainFrame.Visible = true
-    ToggleBtn.Visible = false
+    _G.ToggleBtn.Visible = false
 end)
 
--- Mostrar botão após login
-local oldOpenMainGUI = OpenMainGUI
-OpenMainGUI = function(rank)
-    oldOpenMainGUI(rank)
-    ToggleBtn.Visible = true
-end
-
---// FPS E PING COUNTER
+--// FPS COUNTER
 spawn(function()
     while wait(0.5) do
         local fps = math.floor(1 / RunService.RenderStepped:Wait())
-        FPSLabel.Text = "FPS: " .. fps
+        if _G.FPSLabel then _G.FPSLabel.Text = "FPS: " .. fps end
         
         local ping = game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue()
-        PingLabel.Text = "Ping: " .. math.floor(ping) .. "ms"
-        
-        -- Cores dinâmicas
-        if fps >= 144 then
-            FPSLabel.TextColor3 = CONFIG.Colors.Primary
-        elseif fps >= 60 then
-            FPSLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
-        else
-            FPSLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
-        end
+        if _G.PingLabel then _G.PingLabel.Text = "Ping: " .. math.floor(ping) .. "ms" end
     end
 end)
 
---// PROTEÇÃO ANTI-BAN/ANTI-KICK
+--// PROTEÇÃO
 local OldNamecall
 OldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
     local Method = getnamecallmethod()
-    local Args = {...}
-    
     if Method == "Kick" then
-        CreateNotification("Protection", "Kick attempt blocked!", 3)
+        CreateNotification("Protection", "Kick blocked!", 3)
         return nil
     end
-    
     if Method == "FireServer" then
         local RemoteName = self.Name
-        if RemoteName:match("Ban") or RemoteName:match("Kick") or RemoteName:match("Punish") then
+        if RemoteName:match("Ban") or RemoteName:match("Punish") then
             CreateNotification("Protection", "Ban remote blocked!", 3)
             return nil
         end
     end
-    
     return OldNamecall(self, ...)
 end)
 
-print("╔═══════════════════════════════════════════════════════════════╗")
-print("║                                                               ║")
-print("║           ★ The StarEzic Hub ★                                ║")
-print("║           Carregado com sucesso!                              ║")
-print("║                                                               ║")
-print("║           Digite sua key ou use Free Trial                    ║")
-print("║                                                               ║")
-print("╚═══════════════════════════════════════════════════════════════╝")
+print("★ The StarEzic Hub - Parte 1 Carregada!")
+--[[
+    ╔═══════════════════════════════════════════════════════════════╗
+    ║           ★ The StarEzic Hub ★ - Parte 2                      ║
+    ║           Flee The Facility - Funcionalidades                 ║
+    ║           Botões, Abas e Features                             ║
+    ╚═══════════════════════════════════════════════════════════════╝
+]]
 
--- Verificar se é developer (auto login)
-if GetUserRank() == "DEVELOPER" then
-    wait(1)
-    LoginFrame.Visible = false
-    OpenMainGUI("DEVELOPER")
-    CreateNotification("Welcome Developer!", "All commands enabled.", 5)
+--// STATES
+local States = {
+    NeverFail = false,
+    AlwaysFail = false,
+    ESP = false,
+    ComputerESP = false,
+    PodESP = false,
+    BeastESP = false,
+    NoFog = false,
+    Fullbright = false,
+    Speed = false,
+    Fly = false,
+    Noclip = false,
+    GodMode = false,
+    AutoFarm = false,
+    InstantHack = false,
+    AntiAFK = false,
+    AutoRescue = false,
+    AutoLoot = false
+}
+
+--// VARIÁVEIS
+local SpeedValue = 50
+local ESPObjects = {}
+local PCPositions = {}
+local FlyBodyGyro, FlyBodyVelocity
+local CurrentRank = "NONE"
+
+--// CONFIG
+local CONFIG = {
+    Colors = {
+        Primary = Color3.fromRGB(0, 255, 136),
+        Secondary = Color3.fromRGB(0, 170, 255),
+        Premium = Color3.fromRGB(255, 0, 255),
+        Dev = Color3.fromRGB(255, 215, 0),
+        Background = Color3.fromRGB(15, 15, 26),
+        Glass = Color3.fromRGB(20, 20, 35)
+    }
+}
+
+--// FUNÇÃO CRIAR TOGGLE
+local function CreateToggle(parent, name, posY, callback)
+    local Toggle = Instance.new("Frame")
+    Toggle.Parent = parent
+    Toggle.BackgroundColor3 = CONFIG.Colors.Glass
+    Toggle.BorderSizePixel = 0
+    Toggle.Position = UDim2.new(0, 10, 0, posY)
+    Toggle.Size = UDim2.new(1, -20, 0, 40)
+    
+    local Corner = Instance.new("UICorner")
+    Corner.CornerRadius = UDim.new(0, 8)
+    Corner.Parent = Toggle
+    
+    local Label = Instance.new("TextLabel")
+    Label.Parent = Toggle
+    Label.BackgroundTransparency = 1
+    Label.Position = UDim2.new(0, 15, 0, 0)
+    Label.Size = UDim2.new(0.6, 0, 1, 0)
+    Label.Font = Enum.Font.Gotham
+    Label.Text = name
+    Label.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Label.TextSize = 13
+    Label.TextXAlignment = Enum.TextXAlignment.Left
+    
+    local Switch = Instance.new("Frame")
+    Switch.Parent = Toggle
+    Switch.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
+    Switch.BorderSizePixel = 0
+    Switch.Position = UDim2.new(1, -55, 0.5, -12)
+    Switch.Size = UDim2.new(0, 45, 0, 24)
+    
+    local SwitchCorner = Instance.new("UICorner")
+    SwitchCorner.CornerRadius = UDim.new(1, 0)
+    SwitchCorner.Parent = Switch
+    
+    local Circle = Instance.new("Frame")
+    Circle.Parent = Switch
+    Circle.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    Circle.BorderSizePixel = 0
+    Circle.Position = UDim2.new(0, 2, 0.5, -10)
+    Circle.Size = UDim2.new(0, 20, 0, 20)
+    
+    local CircleCorner = Instance.new("UICorner")
+    CircleCorner.CornerRadius = UDim.new(1, 0)
+    CircleCorner.Parent = Circle
+    
+    local Click = Instance.new("TextButton")
+    Click.Parent = Toggle
+    Click.BackgroundTransparency = 1
+    Click.Size = UDim2.new(1, 0, 1, 0)
+    Click.Text = ""
+    
+    local enabled = false
+    local function Update()
+        if enabled then
+            Switch.BackgroundColor3 = CONFIG.Colors.Primary
+            Circle:TweenPosition(UDim2.new(0, 23, 0.5, -10), Enum.EasingDirection.Out, Enum.EasingStyle.Quart, 0.2, true)
+            Label.TextColor3 = CONFIG.Colors.Primary
+        else
+            Switch.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
+            Circle:TweenPosition(UDim2.new(0, 2, 0.5, -10), Enum.EasingDirection.Out, Enum.EasingStyle.Quart, 0.2, true)
+            Label.TextColor3 = Color3.fromRGB(255, 255, 255)
+        end
+    end
+    
+    Click.MouseButton1Click:Connect(function()
+        enabled = not enabled
+        Update()
+        if callback then callback(enabled) end
+    end)
+    
+    return Toggle, function(state) enabled = state Update() end
 end
+
+--// FUNÇÃO CRIAR BOTÃO
+local function CreateButton(parent, name, posY, color, callback)
+    local Button = Instance.new("TextButton")
+    Button.Parent = parent
+    Button.BackgroundColor3 = color or CONFIG.Colors.Glass
+    Button.BorderSizePixel = 0
+    Button.Position = UDim2.new(0, 10, 0, posY)
+    Button.Size = UDim2.new(1, -20, 0, 40)
+    Button.Font = Enum.Font.GothamBold
+    Button.Text = name
+    Button.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Button.TextSize = 13
+    
+    local Corner = Instance.new("UICorner")
+    Corner.CornerRadius = UDim.new(0, 8)
+    Corner.Parent = Button
+    
+    Button.MouseEnter:Connect(function()
+        Button:TweenSize(UDim2.new(1, -16, 0, 42), Enum.EasingDirection.Out, Enum.EasingStyle.Quart, 0.2, true)
+    end)
+    
+    Button.MouseLeave:Connect(function()
+        Button:TweenSize(UDim2.new(1, -20, 0, 40), Enum.EasingDirection.Out, Enum.EasingStyle.Quart, 0.2, true)
+    end)
+    
+    Button.MouseButton1Click:Connect(function()
+        if callback then callback() end
+    end)
+    
+    return Button
+end
+
+--// CRIAR PÁGINAS
+local Pages = {}
+
+local function CreatePage(name)
+    local Page = Instance.new("ScrollingFrame")
+    Page.Name = name .. "Page"
+    Page.Parent = _G.ContentArea
+    Page.BackgroundTransparency = 1
+    Page.BorderSizePixel = 0
+    Page.Size = UDim2.new(1, 0, 1, 0)
+    Page.ScrollBarThickness = 4
+    Page.ScrollBarImageColor3 = CONFIG.Colors.Primary
+    Page.Visible = false
+    
+    local Layout = Instance.new("UIListLayout")
+    Layout.Parent = Page
+    Layout.SortOrder = Enum.SortOrder.LayoutOrder
+    Layout.Padding = UDim.new(0, 8)
+    
+    local Padding = Instance.new("UIPadding")
+    Padding.Parent = Page
+    Padding.PaddingTop = UDim.new(0, 10)
+    Padding.PaddingBottom = UDim.new(0, 10)
+    
+    Pages[name] = Page
+    return Page
+end
+
+--// CRIAR ABAS
+local function CreateTab(name, icon, pageName, color)
+    local Tab = Instance.new("TextButton")
+    Tab.Parent = _G.ContentArea.Parent:FindFirstChild("Sidebar")
+    Tab.BackgroundColor3 = CONFIG.Colors.Glass
+    Tab.BorderSizePixel = 0
+    Tab.Position = UDim2.new(0, 10, 0, (#Pages * 50) + 10)
+    Tab.Size = UDim2.new(1, -20, 0, 40)
+    Tab.Font = Enum.Font.GothamBold
+    Tab.Text = "  " .. name
+    Tab.TextColor3 = Color3.fromRGB(200, 200, 220)
+    Tab.TextSize = 12
+    Tab.TextXAlignment = Enum.TextXAlignment.Left
+    
+    local Corner = Instance.new("UICorner")
+    Corner.CornerRadius = UDim.new(0, 8)
+    Corner.Parent = Tab
+    
+    Tab.MouseButton1Click:Connect(function()
+        for _, p in pairs(Pages) do p.Visible = false end
+        for _, t in pairs(Tab.Parent:GetChildren()) do
+            if t:IsA("TextButton") then
+                t.BackgroundColor3 = CONFIG.Colors.Glass
+                t.TextColor3 = Color3.fromRGB(200, 200, 220)
+            end
+        end
+        Pages[pageName].Visible = true
+        Tab.BackgroundColor3 = color
+        Tab.TextColor3 = Color3.fromRGB(255, 255, 255)
+    end)
+    
+    return Tab
+end
+
+--// PÁGINA PRINCIPAL
+local MainPage = CreatePage("Main")
+
+-- Título
+local MainTitle = Instance.new("TextLabel")
+MainTitle.Parent = MainPage
+MainTitle.BackgroundTransparency = 1
+MainTitle.Size = UDim2.new(1, -20, 0, 30)
+MainTitle.Font = Enum.Font.GothamBold
+MainTitle.Text = "⚡ FUNÇÕES PRINCIPAIS"
+MainTitle.TextColor3 = CONFIG.Colors.Primary
+MainTitle.TextSize = 16
+
+-- Toggles Main
+CreateToggle(MainPage, "Never Fail Hack", 40, function(state)
+    States.NeverFail = state
+    if state then
+        spawn(function()
+            while States.NeverFail do
+                pcall(function()
+                    game.ReplicatedStorage.RemoteEvent:FireServer("SetPlayerMinigameResult", true)
+                end)
+                wait(0.1)
+            end
+        end)
+    end
+end)
+
+CreateToggle(MainPage, "Always Fail (Troll)", 88, function(state)
+    States.AlwaysFail = state
+    if state then
+        spawn(function()
+            while States.AlwaysFail do
+                pcall(function()
+                    game.ReplicatedStorage.RemoteEvent:FireServer("SetPlayerMinigameResult", false)
+                end)
+                wait(0.1)
+            end
+        end)
+    end
+end)
+
+CreateToggle(MainPage, "Super Speed", 136, function(state)
+    States.Speed = state
+    local char = game.Players.LocalPlayer.Character
+    if char and char:FindFirstChild("Humanoid") then
+        char.Humanoid.WalkSpeed = state and SpeedValue or 16
+    end
+end)
+
+CreateToggle(MainPage, "God Mode", 184, function(state)
+    States.GodMode = state
+end)
+
+CreateToggle(MainPage, "Fly Mode", 232, function(state)
+    States.Fly = state
+    local char = game.Players.LocalPlayer.Character
+    if not char or not char:FindFirstChild("HumanoidRootPart") then return end
+    
+    if state then
+        FlyBodyGyro = Instance.new("BodyGyro")
+        FlyBodyGyro.Parent = char.HumanoidRootPart
+        FlyBodyGyro.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
+        FlyBodyGyro.CFrame = char.HumanoidRootPart.CFrame
+        
+        FlyBodyVelocity = Instance.new("BodyVelocity")
+        FlyBodyVelocity.Parent = char.HumanoidRootPart
+        FlyBodyVelocity.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+        FlyBodyVelocity.Velocity = Vector3.new(0, 0, 0)
+        
+        spawn(function()
+            while States.Fly and FlyBodyGyro and FlyBodyVelocity do
+                local cam = workspace.CurrentCamera
+                local dir = Vector3.new(0, 0, 0)
+                
+                if UserInputService:IsKeyDown(Enum.KeyCode.W) then dir = dir + cam.CFrame.LookVector end
+                if UserInputService:IsKeyDown(Enum.KeyCode.S) then dir = dir - cam.CFrame.LookVector end
+                if UserInputService:IsKeyDown(Enum.KeyCode.A) then dir = dir - cam.CFrame.RightVector end
+                if UserInputService:IsKeyDown(Enum.KeyCode.D) then dir = dir + cam.CFrame.RightVector end
+                if UserInputService:IsKeyDown(Enum.KeyCode.Space) then dir = dir + Vector3.new(0, 1, 0) end
+                if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then dir = dir - Vector3.new(0, 1, 0) end
+                
+                FlyBodyVelocity.Velocity = dir * 50
+                FlyBodyGyro.CFrame = cam.CFrame
+                RunService.RenderStepped:Wait()
+            end
+        end)
+    else
+        if FlyBodyGyro then FlyBodyGyro:Destroy() end
+        if FlyBodyVelocity then FlyBodyVelocity:Destroy() end
+    end
+end)
+
+CreateToggle(MainPage, "Noclip", 280, function(state)
+    States.Noclip = state
+end)
+
+--// PÁGINA VISUAL
+local VisualPage = CreatePage("Visual")
+
+local VisualTitle = Instance.new("TextLabel")
+VisualTitle.Parent = VisualPage
+VisualTitle.BackgroundTransparency = 1
+VisualTitle.Size = UDim2.new(1, -20, 0, 30)
+VisualTitle.Font = Enum.Font.GothamBold
+VisualTitle.Text = "👁 VISUAL ESP"
+VisualTitle.TextColor3 = CONFIG.Colors.Secondary
+VisualTitle.TextSize = 16
+
+CreateToggle(VisualPage, "Player ESP", 40, function(state)
+    States.ESP = state
+    if state then
+        -- ESP Implementation
+        for _, player in pairs(game.Players:GetPlayers()) do
+            if player ~= game.Players.LocalPlayer and player.Character then
+                local esp = Instance.new("BillboardGui")
+                esp.Name = "StarEzicESP"
+                esp.Parent = player.Character:WaitForChild("Head")
+                esp.AlwaysOnTop = true
+                esp.Size = UDim2.new(0, 200, 0, 50)
+                esp.StudsOffset = Vector3.new(0, 2, 0)
+                
+                local frame = Instance.new("Frame")
+                frame.Parent = esp
+                frame.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+                frame.BackgroundTransparency = 0.5
+                frame.Size = UDim2.new(1, 0, 1, 0)
+                
+                local name = Instance.new("TextLabel")
+                name.Parent = frame
+                name.BackgroundTransparency = 1
+                name.Size = UDim2.new(1, 0, 1, 0)
+                name.Font = Enum.Font.GothamBold
+                name.Text = player.Name
+                name.TextColor3 = Color3.fromRGB(255, 255, 255)
+                name.TextSize = 14
+                
+                table.insert(ESPObjects, esp)
+            end
+        end
+    else
+        for _, esp in pairs(ESPObjects) do
+            if esp then esp:Destroy() end
+        end
+        ESPObjects = {}
+    end
+end)
+
+CreateToggle(VisualPage, "Computer ESP", 88, function(state)
+    States.ComputerESP = state
+end)
+
+CreateToggle(VisualPage, "Pod ESP", 136, function(state)
+    States.PodESP = state
+end)
+
+CreateToggle(VisualPage, "Beast ESP", 184, function(state)
+    States.BeastESP = state
+end)
+
+CreateToggle(VisualPage, "No Fog", 232, function(state)
+    States.NoFog = state
+    if state then
+        game.Lighting.FogStart = 100000
+        game.Lighting.FogEnd = 100000
+        game.Lighting.Brightness = 5
+    else
+        game.Lighting.FogStart = 100
+        game.Lighting.FogEnd = 1000
+        game.Lighting.Brightness = 1
+    end
+end)
+
+CreateToggle(VisualPage, "Fullbright", 280, function(state)
+    States.Fullbright = state
+    if state then
+        game.Lighting.Brightness = 10
+        game.Lighting.GlobalShadows = false
+        game.Lighting.Ambient = Color3.fromRGB(255, 255, 255)
+    else
+        game.Lighting.Brightness = 1
+        game.Lighting.GlobalShadows = true
+        game.Lighting.Ambient = Color3.fromRGB(127, 127, 127)
+    end
+end)
+
+--// PÁGINA TELEPORT
+local TeleportPage = CreatePage("Teleport")
+
+local TeleportTitle = Instance.new("TextLabel")
+TeleportTitle.Parent = TeleportPage
+TeleportTitle.BackgroundTransparency = 1
+TeleportTitle.Size = UDim2.new(1, -20, 0, 30)
+TeleportTitle.Font = Enum.Font.GothamBold
+TeleportTitle.Text = "🌍 TELEPORTE"
+TeleportTitle.TextColor3 = Color3.fromRGB(255, 100, 100)
+TeleportTitle.TextSize = 16
+
+CreateButton(TeleportPage, "Teleportar para Computadores", 40, Color3.fromRGB(80, 120, 255), function()
+    PCPositions = {}
+    for _, v in pairs(workspace:GetDescendants()) do
+        if v.Name == "ComputerTable" and v:FindFirstChild("ComputerTrigger1") then
+            table.insert(PCPositions, v.ComputerTrigger1.CFrame)
+        end
+    end
+    CreateNotification("Computadores", #PCPositions .. " PCs encontrados!", 2)
+end)
+
+for i = 1, 7 do
+    CreateButton(TeleportPage, "PC #" .. i, 88 + ((i-1) * 48), Color3.fromRGB(60, 80, 200), function()
+        if PCPositions[i] then
+            local hrp = game.Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            if hrp then hrp.CFrame = PCPositions[i] + Vector3.new(0, 3, 0) end
+        end
+    end)
+end
+
+CreateButton(TeleportPage, "Teleportar para Saída", 424, Color3.fromRGB(255, 100, 100), function()
+    for _, v in pairs(workspace:GetDescendants()) do
+        if v.Name:match("Exit") and v:IsA("BasePart") then
+            local hrp = game.Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            if hrp then hrp.CFrame = v.CFrame + Vector3.new(0, 5, 0) end
+            break
+        end
+    end
+end)
+
+CreateButton(TeleportPage, "Teleportar para Pods", 472, Color3.fromRGB(100, 255, 100), function()
+    for _, v in pairs(workspace:GetDescendants()) do
+        if v.Name:match("Pod") and v:IsA("BasePart") then
+            local hrp = game.Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            if hrp then hrp.CFrame = v.CFrame + Vector3.new(0, 5, 0) end
+            break
+        end
+    end
+end)
+
+--// PÁGINA PREMIUM
+local PremiumPage = CreatePage("Premium")
+
+local PremiumTitle = Instance.new("TextLabel")
+PremiumTitle.Parent = PremiumPage
+PremiumTitle.BackgroundTransparency = 1
+PremiumTitle.Size = UDim2.new(1, -20, 0, 30)
+PremiumTitle.Font = Enum.Font.GothamBold
+PremiumTitle.Text = "⭐ FUNÇÕES PREMIUM"
+PremiumTitle.TextColor3 = CONFIG.Colors.Premium
+PremiumTitle.TextSize = 16
+
+CreateToggle(PremiumPage, "Auto Farm Completo", 40, function(state)
+    States.AutoFarm = state
+end)
+
+CreateToggle(PremiumPage, "Auto Rescue Amigos", 88, function(state)
+    States.AutoRescue = state
+end)
+
+CreateToggle(PremiumPage, "Auto Loot", 136, function(state)
+    States.AutoLoot = state
+end)
+
+CreateToggle(PremiumPage, "Invisibilidade", 184, function(state)
+    -- Premium feature
+end)
+
+CreateToggle(PremiumPage, "Speed Hack 100x", 232, function(state)
+    -- Premium feature
+end)
+
+CreateToggle(PremiumPage, "Anti-Ban Ultra", 280, function(state)
+    -- Premium feature
+end)
+
+--// PÁGINA DEV (Apenas Developer)
+local DevPage = CreatePage("Dev")
+
+local DevTitle = Instance.new("TextLabel")
+DevTitle.Parent = DevPage
+DevTitle.BackgroundTransparency = 1
+DevTitle.Size = UDim2.new(1, -20, 0, 30)
+DevTitle.Font = Enum.Font.GothamBold
+DevTitle.Text = "🔒 DEV PANEL"
+DevTitle.TextColor3 = CONFIG.Colors.Dev
+DevTitle.TextSize = 16
+
+CreateButton(DevPage, "Gerar Key Premium", 40, CONFIG.Colors.Premium, function()
+    if CurrentRank == "DEVELOPER" then
+        local key = GenerateKey("premium", 7)
+        CreateNotification("Key Gerada!", key, 10)
+        print("KEY PREMIUM: " .. key)
+    end
+end)
+
+CreateButton(DevPage, "Gerar Key Basic", 88, CONFIG.Colors.Secondary, function()
+    if CurrentRank == "DEVELOPER" then
+        local key = GenerateKey("basic", 30)
+        CreateNotification("Key Gerada!", key, 10)
+        print("KEY BASIC: " .. key)
+    end
+end)
+
+CreateButton(DevPage, "Ver Keys Ativas", 136, CONFIG.Colors.Primary, function()
+    if CurrentRank == "DEVELOPER" then
+        print("=== KEYS ATIVAS ===")
+        for key, data in pairs(_G.KeySystem.ActiveKeys) do
+            if not data.used then
+                local timeLeft = math.floor((data.expiration - tick()) / 86400)
+                print(key .. " | " .. data.type .. " | " .. timeLeft .. " dias")
+            end
+        end
+    end
+end)
+
+--// CRIAR ABAS VISUAIS
+CreateTab("Principal", "", "Main", CONFIG.Colors.Primary)
+CreateTab("Visual", "", "Visual", CONFIG.Colors.Secondary)
+CreateTab("Teleport", "", "Teleport", Color3.fromRGB(255, 100, 100))
+
+-- Mostrar primeira página
+Pages.Main.Visible = true
+
+--// SISTEMA DE RANK
+local function SetupRank()
+    CurrentRank = GetUserRank()
+    
+    if CurrentRank == "DEVELOPER" then
+        _G.RankLabel.Text = "👑 DEVELOPER"
+        _G.RankLabel.TextColor3 = CONFIG.Colors.Dev
+        CreateTab("Dev", "", "Dev", CONFIG.Colors.Dev)
+        CreateTab("Premium", "", "Premium", CONFIG.Colors.Premium)
+        
+        -- Comandos chat
+        game.Players.LocalPlayer.Chatted:Connect(function(msg)
+            local args = msg:split(" ")
+            local cmd = args[1]:lower()
+            
+            if cmd == "!genkey" then
+                local keyType = args[2] or "basic"
+                local days = tonumber((args[3] or "7"):gsub("d", "")) or 7
+                if keyType == "lifetime" then days = 999999 end
+                local key = GenerateKey(keyType, days)
+                CreateNotification("Key Gerada!", key .. " (" .. keyType .. ")", 10)
+            elseif cmd == "!ban" then
+                local target = args[2]
+                if target then
+                    table.insert(_G.KeySystem.BannedUsers, target)
+                    CreateNotification("Banido!", target .. " banido do script!", 3)
+                end
+            end
+        end)
+        
+    elseif CurrentRank == "PREMIUM" then
+        _G.RankLabel.Text = "⭐ PREMIUM"
+        _G.RankLabel.TextColor3 = CONFIG.Colors.Premium
+        CreateTab("Premium", "", "Premium", CONFIG.Colors.Premium)
+        
+    else
+        _G.RankLabel.Text = "🔷 BASIC"
+        _G.RankLabel.TextColor3 = CONFIG.Colors.Secondary
+    end
+end
+
+--// LOGIN SYSTEM
+local function ShowLogin()
+    local LoginFrame = Instance.new("Frame")
+    LoginFrame.Parent = _G.ContentArea.Parent.Parent
+    LoginFrame.BackgroundColor3 = CONFIG.Colors.Background
+    LoginFrame.BackgroundTransparency = 0.1
+    LoginFrame.BorderSizePixel = 0
+    LoginFrame.Position = UDim2.new(0.5, -200, 0.5, -150)
+    LoginFrame.Size = UDim2.new(0, 400, 0, 300)
+    LoginFrame.ZIndex = 100
+    
+    local Corner = Instance.new("UICorner")
+    Corner.CornerRadius = UDim.new(0, 16)
+    Corner.Parent = LoginFrame
+    
+    local Stroke = Instance.new("UIStroke")
+    Stroke.Color = CONFIG.Colors.Primary
+        Stroke.Thickness = 3
+    Stroke.Parent = LoginFrame
+    
+    local Title = Instance.new("TextLabel")
+    Title.Parent = LoginFrame
+    Title.BackgroundTransparency = 1
+    Title.Position = UDim2.new(0, 0, 0, 20)
+    Title.Size = UDim2.new(1, 0, 0, 40)
+    Title.Font = Enum.Font.GothamBold
+    Title.Text = "★ The StarEzic Hub ★"
+    Title.TextColor3 = CONFIG.Colors.Primary
+    Title.TextSize = 28
+    
+    local KeyBox = Instance.new("TextBox")
+    KeyBox.Parent = LoginFrame
+    KeyBox.BackgroundColor3 = CONFIG.Colors.Glass
+    KeyBox.BorderSizePixel = 0
+    KeyBox.Position = UDim2.new(0.5, -150, 0, 100)
+    KeyBox.Size = UDim2.new(0, 300, 0, 45)
+    KeyBox.Font = Enum.Font.Gotham
+    KeyBox.PlaceholderText = "Enter Your Key Here..."
+    KeyBox.Text = ""
+    KeyBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+    KeyBox.TextSize = 16
+    
+    local KeyCorner = Instance.new("UICorner")
+    KeyCorner.CornerRadius = UDim.new(0, 10)
+    KeyCorner.Parent = KeyBox
+    
+    local VerifyBtn = Instance.new("TextButton")
+    VerifyBtn.Parent = LoginFrame
+    VerifyBtn.BackgroundColor3 = CONFIG.Colors.Primary
+    VerifyBtn.BorderSizePixel = 0
+    VerifyBtn.Position = UDim2.new(0.5, -100, 0, 160)
+    VerifyBtn.Size = UDim2.new(0, 200, 0, 45)
+    VerifyBtn.Font = Enum.Font.GothamBold
+    VerifyBtn.Text = "VERIFY KEY"
+    VerifyBtn.TextColor3 = Color3.fromRGB(0, 0, 0)
+    VerifyBtn.TextSize = 16
+    
+    local VerifyCorner = Instance.new("UICorner")
+    VerifyCorner.CornerRadius = UDim.new(0, 10)
+    VerifyCorner.Parent = VerifyBtn
+    
+    local TrialBtn = Instance.new("TextButton")
+    TrialBtn.Parent = LoginFrame
+    TrialBtn.BackgroundColor3 = CONFIG.Colors.Secondary
+    TrialBtn.BackgroundTransparency = 0.8
+    TrialBtn.BorderSizePixel = 0
+    TrialBtn.Position = UDim2.new(0.5, -75, 0, 220)
+    TrialBtn.Size = UDim2.new(0, 150, 0, 35)
+    TrialBtn.Font = Enum.Font.GothamBold
+    TrialBtn.Text = "FREE TRIAL (1h)"
+    TrialBtn.TextColor3 = CONFIG.Colors.Secondary
+    TrialBtn.TextSize = 12
+    
+    local TrialCorner = Instance.new("UICorner")
+    TrialCorner.CornerRadius = UDim.new(0, 8)
+    TrialCorner.Parent = TrialBtn
+    
+    VerifyBtn.MouseButton1Click:Connect(function()
+        local key = KeyBox.Text:upper()
+        if _G.KeySystem.ActiveKeys[key] and not _G.KeySystem.ActiveKeys[key].used then
+            local data = _G.KeySystem.ActiveKeys[key]
+            data.used = true
+            data.usedBy = game.Players.LocalPlayer.Name
+            _G.KeySystem.UserAccess[game.Players.LocalPlayer.Name] = {
+                rank = data.type:upper(),
+                expiration = data.expiration
+            }
+            LoginFrame:Destroy()
+            SetupRank()
+            _G.MainFrame.Visible = true
+            CreateNotification("Success!", "Access granted: " .. data.type:upper(), 3)
+        else
+            CreateNotification("Error!", "Invalid or used key!", 3)
+        end
+    end)
+    
+    TrialBtn.MouseButton1Click:Connect(function()
+        _G.KeySystem.UserAccess[game.Players.LocalPlayer.Name] = {
+            rank = "BASIC",
+            expiration = tick() + 3600
+        }
+        LoginFrame:Destroy()
+        SetupRank()
+        _G.MainFrame.Visible = true
+        CreateNotification("Trial Started!", "1 hour free access", 3)
+    end)
+end
+
+--// INICIALIZAR
+if CurrentRank == "DEVELOPER" then
+    _G.MainFrame.Visible = true
+    SetupRank()
+    CreateNotification("Welcome Developer!", "All commands enabled", 5)
+else
+    ShowLogin()
+end
+
+--// NOCLIP LOOP
+game:GetService("RunService").Stepped:Connect(function()
+    if States.Noclip and game.Players.LocalPlayer.Character then
+        for _, part in pairs(game.Players.LocalPlayer.Character:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = false
+            end
+        end
+    end
+end)
+
+print("★ The StarEzic Hub - Parte 2 Carregada!")
+print("★ Todas as funcionalidades ativas!")
